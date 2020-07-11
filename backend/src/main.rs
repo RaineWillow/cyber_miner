@@ -6,7 +6,7 @@ mod robot;
 use crate::config::{Config, SecureConfig};
 use cookie::{Cookie, CookieJar, Key};
 use futures_channel::mpsc::{unbounded, UnboundedSender};
-use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
+use futures_util::{future, pin_mut, stream::TryStreamExt, SinkExt, StreamExt};
 use http::header::{HeaderValue, COOKIE, SET_COOKIE};
 use http::status::StatusCode;
 use log::{debug, error, info, warn};
@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::env;
 use std::net::SocketAddr;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::handshake::server::{
     Callback, ErrorResponse, Request, Response,
@@ -25,7 +25,7 @@ type Tx = UnboundedSender<Message>;
 
 #[derive(Clone)]
 struct ServerState {
-    peer_map: Arc<RwLock<HashMap<SocketAddr, Tx>>>,
+    peer_map: Arc<Mutex<HashMap<SocketAddr, Tx>>>,
     cookie_jar: ThreadPrivateJar,
 }
 
@@ -33,7 +33,7 @@ impl ServerState {
     fn new(key: Key) -> Self {
         let cookie_jar = ThreadPrivateJar::new(key);
         Self {
-            peer_map: Arc::new(RwLock::new(HashMap::new())),
+            peer_map: Arc::new(Mutex::new(HashMap::new())),
             cookie_jar,
         }
     }
@@ -47,7 +47,7 @@ const COOKIE_NAME_ID: &str = "id";
 struct ThreadPrivateJar {
     cur_id: usize,
     key: Key,
-    jar: Arc<RwLock<CookieJar>>,
+    jar: Arc<Mutex<CookieJar>>,
 }
 
 impl ThreadPrivateJar {
@@ -58,7 +58,7 @@ impl ThreadPrivateJar {
         Self {
             cur_id: 0,
             key,
-            jar: Arc::new(RwLock::new(jar)),
+            jar: Arc::new(Mutex::new(jar)),
         }
     }
     fn new_cookie_response(&mut self, response: Response) -> Result<Response, ErrorResponse> {
@@ -72,7 +72,7 @@ impl ThreadPrivateJar {
         self.cur_id += 1;
         // Open the cookie jar for writing
         // Shadow cookie since it is being replaced
-        let cookie = match self.jar.write() {
+        let cookie = match self.jar.lock() {
             Ok(mut jar) => {
                 // Open the jar using the private key
                 let mut private_jar = jar.private(&self.key);
@@ -134,7 +134,7 @@ impl Callback for &mut ThreadPrivateJar {
                         Ok(cookie) => {
                             debug!("Received request with cookie {} from client", cookie);
                             // Check to see if the cookie sent is authenticated with our key
-                            match jar.write() {
+                            match jar.lock() {
                                 Ok(mut jar) => {
                                     // Open the jar using the private key
                                     let private_jar = jar.private(&self.key);
@@ -189,9 +189,9 @@ async fn handle_connection(mut state: ServerState, raw_stream: TcpStream, addr: 
 
     // Insert the write part of this peer to the peer map.
     //let (tx, rx) = unbounded();
-    //state.peer_map.write().unwrap().insert(addr, tx);
+    //state.peer_map.lock().unwrap().insert(addr, tx);
 
-    let (outgoing, incoming) = ws_stream.split();
+    let (mut outgoing, incoming) = ws_stream.split();
 
     let print_incoming = incoming.try_for_each(|msg| {
         info!(
@@ -199,7 +199,9 @@ async fn handle_connection(mut state: ServerState, raw_stream: TcpStream, addr: 
             addr,
             msg.to_text().unwrap()
         );
-
+        if let Message::Ping(data) = msg {
+            outgoing.send(Message::Pong(data));
+        }
         future::ok(())
     });
 
@@ -207,7 +209,7 @@ async fn handle_connection(mut state: ServerState, raw_stream: TcpStream, addr: 
         .await
         .expect("Failed to handle incoming messages");
     info!("{} disconnected", &addr);
-    //state.peer_map.as_ref().write().unwrap().remove(&addr);
+    //state.peer_map.as_ref().lock().unwrap().remove(&addr);
 }
 
 #[tokio::main]
