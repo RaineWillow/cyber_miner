@@ -1,6 +1,6 @@
 * {
 	scrollbar-width: thin;
-	scrollbar-color: blue transparent;
+	scrollbar-color: #9999AA transparent;
 }
 
 /* Works on Chrome/Edge/Safari */
@@ -11,7 +11,7 @@
 	background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-	background-color: blue;
+	background-color: #777799;
 	border-radius: 20px;
 	border: 3px solid transparent;
 }
@@ -87,7 +87,7 @@
 }
 
 .div-textarea {
-	border: 2px solid red;
+	border: 2px solid #909090;
 	letter-spacing: 1px;
 	z-index: 2;
 	font: 20px/28px "Courier New", Courier, monospace;
@@ -111,7 +111,7 @@
 }
 
 .editor-button-box {
-	border: 2px solid red;
+	border: 2px solid #909090;
 	position:absolute;
 	width: 10%;
 	height: 80%;
@@ -121,7 +121,7 @@
 	text-align: center;
 	box-sizing: border-box;
 	padding: 10px;
-	background-color:
+	background-color: #202020;
 }
 
 .editor-buttons {
@@ -154,6 +154,15 @@ mark-var {
 	background-color: #406040;
 }
 
+mark-vardec{
+	border-radius: 3px;
+	padding: 0;
+	font: 20px/28px "Courier New", Courier, monospace;
+	letter-spacing: 1px;
+	color: transparent;
+	background-color: #406040;
+}
+
 mark-comment {
 	border-radius: 3px;
 	padding: 0;
@@ -169,7 +178,16 @@ mark-label {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #406040;
+	background-color: #604060;
+}
+
+mark-jmp {
+	border-radius: 3px;
+	padding: 0;
+	font: 20px/28px "Courier New", Courier, monospace;
+	letter-spacing: 1px;
+	color: transparent;
+	background-color: #604060;
 }
 
 .ctext-reg {
@@ -189,9 +207,16 @@ mark-label {
 }
 
 .ctext-label {
-	color: #1affa1;
+	color: #FC46AA;
 }
 
+.ctext-jmp {
+	color: #FC46AA;
+}
+
+.ctext-vardec {
+	color: #800080;
+}
 
 .navbar-custom {
 	background-color: #111111;
