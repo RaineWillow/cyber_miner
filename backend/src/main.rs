@@ -3,10 +3,12 @@ mod asm;
 mod config;
 mod robot;
 
+use crate::api::{CodeError, Request as ApiRequest, Response as ApiResponse};
+use crate::asm::AssemblyLine;
 use crate::config::{Config, SecureConfig};
 use cookie::{Cookie, CookieJar, Key};
-use futures_channel::mpsc::{unbounded, UnboundedSender};
-use futures_util::{future, pin_mut, stream::TryStreamExt, SinkExt, StreamExt};
+use futures_channel::mpsc::UnboundedSender;
+use futures_util::{future, stream::TryStreamExt, SinkExt, StreamExt};
 use http::header::{HeaderValue, COOKIE, SET_COOKIE};
 use http::status::StatusCode;
 use log::{debug, error, info, warn};
@@ -14,6 +16,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::env;
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::handshake::server::{
@@ -194,13 +197,38 @@ async fn handle_connection(mut state: ServerState, raw_stream: TcpStream, addr: 
     let (mut outgoing, incoming) = ws_stream.split();
 
     let print_incoming = incoming.try_for_each(|msg| {
-        info!(
-            "Received a message from {}: {}",
-            addr,
-            msg.to_text().unwrap()
-        );
-        if let Message::Ping(data) = msg {
-            outgoing.send(Message::Pong(data));
+        // Get the message as text
+        let message_text = msg.to_text().unwrap();
+        // Parse the message
+        dbg!(&message_text);
+        let message: ApiRequest = serde_json::from_str(message_text).unwrap();
+        dbg!(&message);
+        // Handle the code
+        if let ApiRequest::UploadCode(code) = message {
+            let mut lines = Vec::new();
+            let mut errors = Vec::new();
+            for (line_num, line) in code.lines().enumerate() {
+                match AssemblyLine::from_str(&line) {
+                    Ok(line) => lines.push(line),
+                    Err(err) => errors.push(CodeError {
+                        line: line_num,
+                        error: err,
+                    }),
+                }
+            }
+            let errors = if errors.len() == 0 {
+                None
+            } else {
+                Some(errors)
+            };
+            let response = ApiResponse::UploadCode {
+                success: errors.is_none(),
+                errors,
+            };
+            dbg!(&response);
+            let response_text = serde_json::to_string(&response).unwrap();
+            dbg!(&response_text);
+            outgoing.send(Message::Text(response_text));
         }
         future::ok(())
     });

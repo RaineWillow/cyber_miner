@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::str::FromStr;
 
 /// a line of assembly
@@ -124,6 +125,7 @@ impl FromStr for AssemblyLine {
     }
 }
 
+#[derive(Debug, Serialize)]
 pub enum AssemblyLineParseError {
     EmptyLine,
     JmpMissingArgument,
@@ -145,6 +147,8 @@ pub enum Register {
     RET,
     MEM,
 }
+
+#[derive(Debug, Serialize)]
 pub enum RegisterParseError {
     InvalidRegister,
 }

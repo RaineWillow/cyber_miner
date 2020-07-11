@@ -1,12 +1,25 @@
 use crate::asm::AssemblyLineParseError;
+use serde::{Deserialize, Serialize};
 
-enum Request {
-    UploadCode { bot_id: usize, code: String },
+#[derive(Debug, Deserialize)]
+#[serde(tag = "t", content = "d")]
+pub enum Request {
+    #[serde(rename = "u")]
+    UploadCode(String),
 }
 
-enum Response {
+#[derive(Debug, Serialize)]
+#[serde(tag = "t", content = "d")]
+pub enum Response {
+    #[serde(rename = "u")]
     UploadCode {
         success: bool,
-        errors: Option<Vec<AssemblyLineParseError>>,
+        errors: Option<Vec<CodeError>>,
     },
+}
+
+#[derive(Debug, Serialize)]
+pub struct CodeError {
+    pub line: usize,
+    pub error: AssemblyLineParseError,
 }
