@@ -41,6 +41,12 @@
 
 }
 
+.side-bar {
+	position: absolute;
+	left: 10%;
+	top: 5%;
+}
+
 .center-area {
 	position: absolute;
 	left: 50%;
@@ -56,14 +62,19 @@
 	word-wrap: break-word;
 }
 
+.backdrop, .div-textarea {
+	width: 35%;
+	height: 85%;
+	left: 1%;
+	top: 5%%;
+}
+
 .backdrop {
 	position: absolute;
 	z-index: 1;
 	border: 2px solid transparent;
-	background-color: transparent;
+	background-color: #202020;
 	overflow: auto;
-	width: 460px;
-	height: 180px;
 }
 
 .div-textarea {
@@ -77,8 +88,23 @@
 	background-color: transparent;
 	overflow: auto;
 	resize: none;
-	width: 460px;
-	height: 180px;
+}
+
+.editor-button-box {
+	border: 2px solid red;
+	position:absolute;
+	width: 10%;
+	height: 80%;
+	left: 38%;
+	overflow: auto;
+	resize: none;
+	text-align: center;
+	box-sizing: border-box;
+	padding: 10px;
+	background-color:
+}
+
+.editor-buttons {
 }
 
 mark-reg {
@@ -87,7 +113,7 @@ mark-reg {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #770000;
+	background-color: #404040;
 }
 
 mark-const {
@@ -96,7 +122,7 @@ mark-const {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #777700;
+	background-color: #404040;
 }
 
 mark-var {
@@ -105,7 +131,7 @@ mark-var {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #006600;
+	background-color: #404040;
 }
 
 mark-comment {
@@ -114,7 +140,7 @@ mark-comment {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #444444;
+	background-color: #404040;
 }
 
 mark-label {
@@ -123,8 +149,29 @@ mark-label {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #007700;
+	background-color: #404040;
 }
+
+.ctext-reg {
+	color: #ff1a3c;
+}
+
+.ctext-const {
+	color: #a1ff7f;
+}
+
+.ctext-var {
+	color: #15ffa2;
+}
+
+.ctext-comment {
+	color: #AAAAAA;
+}
+
+.ctext-label {
+	color: #1affa1;
+}
+
 
 .navbar-custom {
 	background-color: #111111;

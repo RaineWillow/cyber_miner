@@ -9,7 +9,7 @@
 		<link rel="stylesheet" href="css/styling.css">
 	</head>
 	<body>
-		<div class="container p-3">
+		<div class="container-fluid p-3">
 			<div class="row">
 				<ul class="nav navbar-custom nav-pills">
 					<li class="nav-item">
@@ -37,6 +37,9 @@
 							<div class="highlights"></div>
 						</div>
 						<div contenteditable="true" name="editor" id="editor" spellcheck="false" class="div-textarea"></div>
+						<div class = "editor-button-box">
+							<button type="button" id="cnvt_button" class="btn btn-info editor-buttons">cnvt_button</button>
+						<div>
 					</div>
 				</div>
 			</div>
@@ -55,6 +58,16 @@
 		let ctx = canvas.getContext("2d");
 		ctx.fillStyle = "#FFFFFF";
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
+/*
+		let editor = document.getElementById("editor");
+		editor.width = screen.width/2;
+		editor.height = screen.height;
+
+		let backdrop = document.getElementById("editor_backdrop");
+		backdrop.width = screen.width/2;
+		backdrop.height = screen.height;
+*/
 	</script>
 	<script type="text/javascript" src="src/text_highlight.js"></script>
+	<script type="text/javascript" src="src/client.js"></script>
 </html>

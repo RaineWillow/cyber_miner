@@ -7,14 +7,45 @@ var isIE = !!ua.match(/msie|trident\/7|edge/);
 var isWinPhone = ua.indexOf('windows phone') !== -1;
 var isIOS = !isWinPhone && !!ua.match(/ipad|iphone|ipod/);
 
+function pasteHtmlAtCaret(html) {
+	var sel, range;
+	if (window.getSelection) {
+		// IE9 and non-IE
+		sel = window.getSelection();
+		if (sel.getRangeAt && sel.rangeCount) {
+			range = sel.getRangeAt(0);
+			range.deleteContents();
+			// Range.createContextualFragment() would be useful here but is
+			// non-standard and not supported in all browsers (IE9, for one)
+               var el = document.createElement("div");
+               el.innerHTML = html;
+               var frag = document.createDocumentFragment(), node, lastNode;
+               while ( (node = el.firstChild) ) {
+                    lastNode = frag.appendChild(node);
+               }
+               range.insertNode(frag);
+               // Preserve the selection
+               if (lastNode) {
+                    range = range.cloneRange();
+                    range.setStartAfter(lastNode);
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+               }
+          }
+     } else if (document.selection && document.selection.type != "Control") {
+          // IE < 9
+          document.selection.createRange().pasteHTML(html);
+     }
+}
+
 function applyHighlights(text) {
-	text = text
-	.replace(/\n/g, '<br>')
-	.replace(/%[a-z]{1,3}\b/g, '<mark-reg>$&</mark-reg>');
+	text = text.replace(/\n/g, '<br>');
+	text = text.replace(/%[a-z]{1,3}\b/g, '<mark-reg>$&</mark-reg>')
 	text = text.replace(/\b[0-9]{1,3}\b/g, '<mark-const>$&</mark-const>');
-	text = text.replace(/\$[a-z|0-9|_]+/g, '<mark-var>$&</mark-var>');
+	text = text.replace(/\$[a-z|_][a-z|0-9|_]*/g, '<mark-var>$&</mark-var>');
 	text = text.replace(/[a-z|_][a-z|0-9|_]*:/g, '<mark-label>$&</mark-label>');
-	text = text.replace(/\/\/[a-z| |A-Z|0-9]*/g, '<mark-comment>$&</mark-comment>');
+//	text = text.replace(/\/\/[a-z| |A-Z|0-9]*/g, '<mark-comment>$&</mark-comment>');
 
 	if (isIE) {
 		// IE wraps whitespace differently in a div vs textarea, this fixes it
@@ -27,14 +58,26 @@ function handleInput(event) {
 	if (event == undefined) {
 		return;
 	}
+
 	var text = event.target.innerHTML;
-	console.log(text);
+
+     text = text.replace(/<span class="[^"]*">/g, "");
+     text = text.replace(/<\/span>/g, "");
+
+	text = text.replace(/%[a-z]{1,3}\b/g, '<span class="ctext-reg">$&</span>')
+	text = text.replace(/\b[0-9]{1,3}\b/g, '<span class="ctext-const">$&</span>');
+	text = text.replace(/\$[a-z|_][a-z|0-9|_]*/g, '<span class="ctext-var">$&</span>');
+	text = text.replace(/[a-z|_][a-z|0-9|_]*:/g, '<span class="ctext-label">$&</span>');
+	text = text.replace(/\/\/[a-z| |A-Z|0-9|&nbsp;]*/g, '<span class="ctext-comment">$&</span>');
+
+     textarea.focus();
+     textarea.innerHTML = "";
+     pasteHtmlAtCaret(text);
 	var highlightedText = applyHighlights(text);
 	$highlights.html(highlightedText);
 }
 
 function handleScroll(event) {
-	console.log("happening");
 	var thisBackdrop = document.getElementById("editor_backdrop");
 	var scrollTop = textarea.scrollTop;
 	thisBackdrop.scrollTop = scrollTop;
