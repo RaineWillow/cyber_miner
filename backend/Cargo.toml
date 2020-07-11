@@ -1,0 +1,13 @@
+[package]
+name = "backend"
+version = "0.1.0"
+authors = ["starfys"]
+edition = "2018"
+
+[dependencies]
+env_logger = "0.7"
+futures-channel = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["async-await", "sink", "std"] }
+log = "0.4"
+tokio = { version = "0.2", default-features = false, features = ["io-std", "macros", "stream", "time"] }
+tokio-tungstenite = "0.10"
