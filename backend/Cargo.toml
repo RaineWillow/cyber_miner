@@ -5,9 +5,16 @@ authors = ["starfys"]
 edition = "2018"
 
 [dependencies]
+base64 = "0.12"
+cookie = { version = "0.14", features = [ "private" ] }
 env_logger = "0.7"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["async-await", "sink", "std"] }
+hex = "0.4"
+http = "0.2"
 log = "0.4"
+rand_core = "0.5"
+serde = { version = "1", features = [ "derive" ] }
 tokio = { version = "0.2", default-features = false, features = ["io-std", "macros", "stream", "time"] }
 tokio-tungstenite = "0.10"
+toml = "0.5"
