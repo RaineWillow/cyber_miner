@@ -6,6 +6,10 @@ webSock.onopen = function (event) {
 	convertB.addEventListener("click", onConvert);
 }
 
+webSock.onmessage = function (event) {
+	console.log(event.data);
+}
+
 function onConvert() {
 	let text = textArea.innerText;
 	text = text.replace(/\n\n\n*/g, "\n");
