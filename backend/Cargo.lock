@@ -79,7 +79,6 @@ dependencies = [
 name = "backend"
 version = "0.1.0"
 dependencies = [
- "base64 0.12.3",
  "cookie",
  "env_logger",
  "futures-channel",
@@ -89,6 +88,7 @@ dependencies = [
  "log",
  "rand_core",
  "serde",
+ "serde_json",
  "tokio",
  "tokio-tungstenite",
  "toml",
