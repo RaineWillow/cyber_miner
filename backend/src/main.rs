@@ -2,13 +2,15 @@ mod api;
 mod asm;
 mod config;
 mod robot;
+mod user;
 
 use crate::api::{CodeError, Request as ApiRequest, Response as ApiResponse};
 use crate::asm::AssemblyLine;
 use crate::config::{Config, SecureConfig};
+use crate::user::User;
 use cookie::{Cookie, CookieJar, Key};
 use futures_channel::mpsc::UnboundedSender;
-use futures_util::{future, stream::TryStreamExt, SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt};
 use http::header::{HeaderValue, COOKIE, SET_COOKIE};
 use http::status::StatusCode;
 use log::{debug, error, info, warn};
@@ -17,7 +19,8 @@ use std::convert::TryInto;
 use std::env;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::handshake::server::{
     Callback, ErrorResponse, Request, Response,
@@ -29,28 +32,27 @@ type Tx = UnboundedSender<Message>;
 #[derive(Clone)]
 struct ServerState {
     peer_map: Arc<Mutex<HashMap<SocketAddr, Tx>>>,
-    cookie_jar: ThreadPrivateJar,
+    cookie_jar: Arc<ThreadPrivateJar>,
+    // TODO: make this fnv hashmap
+    // TODO: better sync primitive
+    users: Arc<RwLock<HashMap<usize, User>>>,
 }
 
 impl ServerState {
     fn new(key: Key) -> Self {
-        let cookie_jar = ThreadPrivateJar::new(key);
         Self {
             peer_map: Arc::new(Mutex::new(HashMap::new())),
-            cookie_jar,
+            cookie_jar: Arc::new(ThreadPrivateJar::new(key)),
+            users: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
 
-// Sets which cookie key we want to use
-const COOKIE_NAME_ID: &str = "id";
-
 /// Used to store cookies across threads
-#[derive(Clone)]
 struct ThreadPrivateJar {
-    cur_id: usize,
+    cur_id: AtomicUsize,
     key: Key,
-    jar: Arc<Mutex<CookieJar>>,
+    jar: Mutex<CookieJar>,
 }
 
 impl ThreadPrivateJar {
@@ -59,51 +61,78 @@ impl ThreadPrivateJar {
         let jar = CookieJar::new();
 
         Self {
-            cur_id: 0,
+            cur_id: AtomicUsize::new(0),
             key,
-            jar: Arc::new(Mutex::new(jar)),
+            jar: Mutex::new(jar),
         }
     }
-    fn new_cookie_response(&mut self, response: Response) -> Result<Response, ErrorResponse> {
+}
+
+/// Stores a reference to the big cookig jar, and
+/// has a value for storing this connection's cookie
+struct CookieHandler {
+    conn_id: Option<usize>,
+    jar: Arc<ThreadPrivateJar>,
+}
+impl CookieHandler {
+    fn new(jar: Arc<ThreadPrivateJar>) -> Self {
+        Self { conn_id: None, jar }
+    }
+}
+
+impl CookieHandler {
+    fn new_cookie_response(
+        &mut self,
+        response: Response,
+        lock: Option<MutexGuard<CookieJar>>,
+    ) -> Result<Response, ErrorResponse> {
+        // Increment the user id and return the old one
+        // Allocate a new user id
+        let my_id = self.jar.cur_id.fetch_add(1, Ordering::Relaxed);
+        // Store the id for this session
+        self.conn_id = Some(my_id);
         // Construct a cookie
-        let cookie = Cookie::build(COOKIE_NAME_ID, self.cur_id.to_string())
+        let new_cookie_name = format!("user_{}", my_id);
+        // TODO: set the value to some random stuff
+        let new_cookie = Cookie::build(new_cookie_name.clone(), my_id.to_string())
             // TODO: set secure to true once we're on https
             //.secure(true)
             .finish();
-        debug!("Created new cookie {}", cookie);
-        // Increment the id
-        self.cur_id += 1;
-        // Open the cookie jar for writing
-        // Shadow cookie since it is being replaced
-        let cookie = match self.jar.lock() {
-            Ok(mut jar) => {
-                // Open the jar using the private key
-                let mut private_jar = jar.private(&self.key);
-                // Store our cookie in the private jar
-                private_jar.add_original(cookie);
-                // Retrieve the cookie from the regular jar after encrypting it in the private
-                // one. Then, convert it to a string
-                match jar.get(COOKIE_NAME_ID) {
-                    Some(cookie) => cookie.to_string(),
-                    None => {
-                        error!("Error retrieving cookie just added to cookie jar");
-                        return Err(Response::builder()
-                            .status(StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(None)
-                            .unwrap());
+        debug!("Created new cookie {}", new_cookie);
+        let cookie_str = {
+            // Open the cookie jar for writing
+            let lock = match lock {
+                Some(lock) => Ok(lock),
+                None => self.jar.jar.lock(),
+            };
+            match lock {
+                Ok(mut jar) => {
+                    // Open the jar using the private key
+                    let mut private_jar = jar.private(&self.jar.key);
+                    // Store our cookie in the private jar
+                    private_jar.add_original(new_cookie);
+                    // Retrieve the cookie from the regular jar after encrypting it in the private
+                    // one. Then, convert it to a string
+                    match jar.get(&new_cookie_name) {
+                        Some(cookie) => cookie.to_string(),
+                        None => {
+                            error!("Error retrieving cookie just added to cookie jar");
+                            return Err(Response::builder()
+                                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                                .body(None)
+                                .unwrap());
+                        }
                     }
                 }
-            }
-            Err(err) => {
-                error!("Error getting access to cookie jar: {}", err);
-                return Err(Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(None)
-                    .unwrap());
+                Err(err) => {
+                    error!("Error getting access to cookie jar: {}", err);
+                    return Err(Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(None)
+                        .unwrap());
+                }
             }
         };
-        // Convert cookie to string
-        let cookie_str = cookie.to_string();
         // Convert cookie string to header
         match HeaderValue::from_str(&cookie_str) {
             Ok(cookie_header) => {
@@ -122,7 +151,7 @@ impl ThreadPrivateJar {
     }
 }
 
-impl Callback for &mut ThreadPrivateJar {
+impl Callback for &mut CookieHandler {
     fn on_request(self, request: &Request, response: Response) -> Result<Response, ErrorResponse> {
         // Get one reference to the jar
         let jar = self.jar.clone();
@@ -136,19 +165,38 @@ impl Callback for &mut ThreadPrivateJar {
                     match Cookie::parse(cookie) {
                         Ok(cookie) => {
                             debug!("Received request with cookie {} from client", cookie);
+                            // Store the cookie's name
+                            let cookie_name = cookie.name();
                             // Check to see if the cookie sent is authenticated with our key
-                            match jar.lock() {
+                            match jar.jar.lock() {
                                 Ok(mut jar) => {
                                     // Open the jar using the private key
-                                    let private_jar = jar.private(&self.key);
-                                    if let Some(cookie) = private_jar.get(COOKIE_NAME_ID) {
-                                        debug!("Cookie received decrypts to {}", cookie);
-                                        Ok(response)
+                                    let private_jar = jar.private(&self.jar.key);
+                                    if let Some(jar_cookie) = private_jar.get(&cookie_name) {
+                                        debug!(
+                                            "Cookie in jar for {} is {}",
+                                            cookie_name,
+                                            jar_cookie.value()
+                                        );
+                                        // Parse out the cookie as an id
+                                        match jar_cookie.value().parse() {
+                                            Ok(id) => {
+                                                self.conn_id = Some(id);
+                                                Ok(response)
+                                            }
+                                            Err(err) => {
+                                                error!("Error parsing id as integer: {}", err);
+                                                Err(Response::builder()
+                                                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                                                    .body(None)
+                                                    .unwrap())
+                                            }
+                                        }
                                     }
                                     // Error validating cookie, make a new one
                                     else {
                                         warn!("Received invalid cookie from client. Giving them a new one");
-                                        self.new_cookie_response(response)
+                                        self.new_cookie_response(response, Some(jar))
                                     }
                                 }
                                 // Error getting access to the rwlock
@@ -164,78 +212,104 @@ impl Callback for &mut ThreadPrivateJar {
                         // Failed to parse cookie header value as cookie
                         Err(err) => {
                             error!("Error parsing cookie: {}", err);
-                            self.new_cookie_response(response)
+                            self.new_cookie_response(response, None)
                         }
                     }
                 }
                 // Failed to convert cookie header to string
                 Err(err) => {
                     error!("Error converting cookie header value to string: {}", err);
-                    self.new_cookie_response(response)
+                    self.new_cookie_response(response, None)
                 }
             }
         }
         // No cookie was provided, make a new one
         else {
-            self.new_cookie_response(response)
+            self.new_cookie_response(response, None)
         }
     }
 }
 
 async fn handle_connection(mut state: ServerState, raw_stream: TcpStream, addr: SocketAddr) {
     println!("Incoming TCP connection from: {}", addr);
-
-    let ws_stream = tokio_tungstenite::accept_hdr_async(raw_stream, &mut state.cookie_jar)
+    // Get jar
+    let jar = state.cookie_jar.clone();
+    // Create a cookie handler for this session
+    let mut cookie_handler = CookieHandler::new(jar);
+    // Initialize the connection and extract or create the cookies
+    let ws_stream = tokio_tungstenite::accept_hdr_async(raw_stream, &mut cookie_handler)
         .await
         .expect("Error during the websocket handshake occurred");
-    println!("WebSocket connection established: {}", addr);
+    // Get the user id
+    let user_id = if let Some(user_id) = cookie_handler.conn_id {
+        user_id
+    } else {
+        error!("User connected without an id");
+        return;
+    };
+    info!("User logged in from {} with id {}", addr, user_id);
 
-    // Insert the write part of this peer to the peer map.
-    //let (tx, rx) = unbounded();
-    //state.peer_map.lock().unwrap().insert(addr, tx);
+    let (mut outgoing, mut incoming) = ws_stream.split();
 
-    let (mut outgoing, incoming) = ws_stream.split();
-
-    let print_incoming = incoming.try_for_each(|msg| {
-        // Get the message as text
-        let message_text = msg.to_text().unwrap();
-        // Parse the message
-        dbg!(&message_text);
-        let message: ApiRequest = serde_json::from_str(message_text).unwrap();
-        dbg!(&message);
-        // Handle the code
-        if let ApiRequest::UploadCode(code) = message {
-            let mut lines = Vec::new();
-            let mut errors = Vec::new();
-            for (line_num, line) in code.lines().enumerate() {
-                match AssemblyLine::from_str(&line) {
-                    Ok(line) => lines.push(line),
-                    Err(err) => errors.push(CodeError {
-                        line: line_num,
-                        error: err,
-                    }),
+    while let Some(message) = incoming.next().await {
+        match message {
+            Ok(Message::Text(message_text)) => {
+                // Parse the message
+                let message = serde_json::from_str(&message_text);
+                // Handle the code
+                match message {
+                    Ok(ApiRequest::UploadCode(code)) => {
+                        // Extract into parts for a request
+                        let (_code, response) = match asm::parse_code(code) {
+                            Ok(code) => (
+                                Some(code),
+                                ApiResponse::UploadCode {
+                                    success: true,
+                                    errors: None,
+                                },
+                            ),
+                            Err(errors) => (
+                                None,
+                                ApiResponse::UploadCode {
+                                    success: false,
+                                    errors: Some(errors),
+                                },
+                            ),
+                        };
+                        // Serialize response as json
+                        let response_text = serde_json::to_string(&response).unwrap();
+                        // Send response
+                        if let Err(err) = outgoing.send(Message::Text(response_text)).await {
+                            error!("Error sending response to client: {}", err)
+                        }
+                    }
+                    Err(err) => {
+                        error!(
+                            "Error parsing message {:?} as request: {}",
+                            message_text, err
+                        );
+                    }
                 }
             }
-            let errors = if errors.len() == 0 {
-                None
-            } else {
-                Some(errors)
-            };
-            let response = ApiResponse::UploadCode {
-                success: errors.is_none(),
-                errors,
-            };
-            dbg!(&response);
-            let response_text = serde_json::to_string(&response).unwrap();
-            dbg!(&response_text);
-            outgoing.send(Message::Text(response_text));
+            Ok(Message::Binary(data)) => {
+                warn!("Received unhandled binary data: {:?}", data);
+            }
+            Ok(Message::Ping(data)) => {
+                if let Err(err) = outgoing.send(Message::Pong(data)).await {
+                    error!("Error sending pong: {}", err);
+                }
+            }
+            Ok(Message::Pong(_data)) => {
+                // Do nothing
+            }
+            Ok(Message::Close(_)) => {
+                return;
+            }
+            Err(err) => {
+                error!("Error reading incoming message: {}", err);
+            }
         }
-        future::ok(())
-    });
-
-    print_incoming
-        .await
-        .expect("Failed to handle incoming messages");
+    }
     info!("{} disconnected", &addr);
     //state.peer_map.as_ref().lock().unwrap().remove(&addr);
 }
