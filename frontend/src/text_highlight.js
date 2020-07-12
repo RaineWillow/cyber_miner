@@ -4,6 +4,8 @@ var $highlights = $('.highlights');
 var $highlights_text = $('.highlights_text')
 var textarea = document.getElementById("editor");
 
+let useHighlight = true;
+
 var ua = window.navigator.userAgent.toLowerCase();
 var isIE = !!ua.match(/msie|trident\/7|edge/);
 var isWinPhone = ua.indexOf('windows phone') !== -1;
@@ -17,7 +19,7 @@ function applyHighlights(text) {
 	text = text.replace(/\$[a-z|_][a-z|0-9|_]*/g, '<mark-var>$&</mark-var>');
 	text = text.replace(/[a-z|_][a-z|0-9|_]*:/g, '<mark-label>$&</mark-label>');
 	text = text.replace(/@[a-z|_][a-z|0-9|_]*/g, '<mark-jmp>$&</mark-jmp>');
-	
+
 	text = text.replace(/let/g, '<span class="ctext-vardec">$&</span>');
 	text = text.replace(/%[a-z]{1,3}\b/g, '<span class="ctext-reg">$&</span>');
 	text = text.replace(/\b[0-9]{1,3}\b/g, '<span class="ctext-const">$&</span>');
@@ -43,8 +45,6 @@ function handleInput(event) {
 	var text = event.target.innerHTML;
 	text = text.replace(/<span style="white-space:pre">/g, "");
 
-	console.log(text);
-
 	var highlightedText = applyHighlights(text);
 	$highlights.html(highlightedText);
 	$highlights_text.html(highlightedText);
@@ -68,6 +68,10 @@ function fixIOS() {
 		'padding-left': '+=3px',
 		'padding-right': '+=3px'
 	});
+}
+
+function handleButton() {
+	useHighlight = !useHighlight;
 }
 
 function bindEvents() {

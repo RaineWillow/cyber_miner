@@ -54,6 +54,30 @@
 	transform: translate(-50%, -50%);
 }
 
+.span-fixed-width {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 4ch;
+}
+
+.map-data-box {
+	border: 2px solid #909090;
+	position:absolute;
+	letter-spacing: 1px;
+	font: 17px/28px "Courier New", Courier, monospace;
+	color: #00FAFF;
+	width: 50%;
+	height: 3%;
+	left: 50%;
+	top: 18%;
+	display: inline-block;
+	resize: none;
+	box-sizing: border-box;
+	background-color: #202020;
+	transform: translate(-50%, -0%);
+}
+
 .highlights {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
@@ -124,6 +148,20 @@
 	background-color: #202020;
 }
 
+.editor-options-box {
+	border: 2px solid #909090;
+	position:absolute;
+	width: 35%;
+	height: 6%;
+	left: 1%;
+	top: 93%;
+	resize: none;
+	box-sizing: border-box;
+	padding: 10px;
+	background-color: #202020;
+}
+
+
 .editor-buttons {
 }
 
@@ -133,7 +171,7 @@ mark-reg {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #604040;
+	background-color: #301010;
 }
 
 mark-const {
@@ -142,7 +180,7 @@ mark-const {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #606040;
+	background-color: #303010;
 }
 
 mark-var {
@@ -151,7 +189,7 @@ mark-var {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #406040;
+	background-color: #103010;
 }
 
 mark-vardec{
@@ -160,7 +198,7 @@ mark-vardec{
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #406040;
+	background-color: #103010;
 }
 
 mark-comment {
@@ -169,7 +207,7 @@ mark-comment {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #404040;
+	background-color: #101010;
 }
 
 mark-label {
@@ -178,7 +216,7 @@ mark-label {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #604060;
+	background-color: #301030;
 }
 
 mark-jmp {
@@ -187,7 +225,7 @@ mark-jmp {
 	font: 20px/28px "Courier New", Courier, monospace;
 	letter-spacing: 1px;
 	color: transparent;
-	background-color: #604060;
+	background-color: #301030;
 }
 
 .ctext-reg {
@@ -195,7 +233,7 @@ mark-jmp {
 }
 
 .ctext-const {
-	color: #a9ff8f;
+	color: #D9ff2f;
 }
 
 .ctext-var {
@@ -207,15 +245,31 @@ mark-jmp {
 }
 
 .ctext-label {
-	color: #FC46AA;
+	color: #FC46FA;
 }
 
 .ctext-jmp {
-	color: #FC46AA;
+	color: #FC46FA;
 }
 
 .ctext-vardec {
 	color: #800080;
+}
+
+.overlay-z-1 {
+	z-index: 1;
+}
+
+.overlay-z-2 {
+	z-index: 2;
+}
+
+.overlay-z-3 {
+	z-index: 3;
+}
+
+.ptr-evt {
+	pointer-events: none;
 }
 
 .navbar-custom {

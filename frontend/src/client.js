@@ -2,6 +2,9 @@ let textArea = document.getElementById("editor");
 let convertB = document.getElementById("cnvt_button");
 let webSock = new WebSocket("ws://localhost:8080");
 
+
+resources.onReady(renderMap);
+
 webSock.onopen = function (event) {
 	convertB.addEventListener("click", onConvert);
 }

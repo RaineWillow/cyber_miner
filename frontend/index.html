@@ -27,7 +27,11 @@
 			<div class="row p-3">
 				<div class="tab-content">
 					<div id="t_map" class="tab-pane fade show active">
-						<canvas id="map_view" class="center-area"></canvas>
+						<canvas id="map_view" class="center-area overlay-z-1"></canvas>
+						<canvas id="mou_updt" class="center-area overlay-z-2 ptr-evt"></canvas>
+						<div class="map-data-box" id="map_data">
+
+						</div>
 					</div>
 					<div id="t_base" class="tab-pane fade">
 
@@ -42,7 +46,10 @@
 						</div>
 						<div class = "editor-button-box">
 							<button type="button" id="cnvt_button" class="btn btn-info editor-buttons">cnvt_button</button>
-						<div>
+						</div>
+						<div class = "editor-options-box">
+							<button type="button" id="tog_highlights" class="btn btn-info editor-buttons">Toggle Highlights</button>someText
+						</div>
 					</div>
 				</div>
 			</div>
@@ -55,12 +62,30 @@
 	</body>
 
 	<script type="text/javascript">
+
+		function getMousePos(canvas, evt) {
+			var rect = canvas.getBoundingClientRect();
+			return {
+				x: evt.clientX - rect.left,
+				y: evt.clientY - rect.top
+			};
+		}
+
 		let canvas = document.getElementById("map_view");
 		canvas.width = screen.width/2;
 		canvas.height = screen.height/2;
 		let ctx = canvas.getContext("2d");
-		ctx.fillStyle = "#FFFFFF";
+		ctx.fillStyle = "rgba(255, 255, 255, 0.0)";
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+		let manvas = document.getElementById("mou_updt");
+		manvas.width = screen.width/2;
+		manvas.height = screen.height/2;
+		let mtx = manvas.getContext("2d");
+		mtx.fillStyle = "rgba(255, 255, 255, 0.0)";
+		mtx.fillRect(0, 0, canvas.width, canvas.height);
+
+
 /*
 		let editor = document.getElementById("editor");
 		editor.width = screen.width/2;
@@ -72,5 +97,6 @@
 */
 	</script>
 	<script type="text/javascript" src="src/text_highlight.js"></script>
+	<script type="text/javascript" src="src/map_disp.js"></script>
 	<script type="text/javascript" src="src/client.js"></script>
 </html>
