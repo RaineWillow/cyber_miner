@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <script type="text/javascript">
+    let ws = new WebSocket("ws://localhost:8080");
+    ws.onopen = function(event) {
+      ws.send(JSON.stringify({t: 'u', d: 'mov %rga %rgb'}));
+      ws.send(JSON.stringify({t: 'u', d: 'mov %rga %rgb\nmov mov mov'}));
+      ws.send(JSON.stringify({t: 'u', d: 'mov %rga %rgb\nout\nloop:\njmp @loop'}));
+    };
+    ws.onmessage = function(event) {
+      console.log(event.data);
+    }
+  </script>
+</html>

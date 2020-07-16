@@ -282,6 +282,14 @@ async fn handle_connection(mut state: ServerState, raw_stream: TcpStream, addr: 
                         if let Err(err) = outgoing.send(Message::Text(response_text)).await {
                             error!("Error sending response to client: {}", err)
                         }
+                        // Try to parse the code because why not
+                        let mut robot = robot::Robot::default();
+                        if let Some(_code) = _code {
+                            let assembly_result =
+                                asm::assemble(&_code, &mut robot.bios, &mut robot.memory);
+                            dbg!(&assembly_result);
+                            println!("{:?}", robot.bios.to_vec());
+                        }
                     }
                     Err(err) => {
                         error!(
