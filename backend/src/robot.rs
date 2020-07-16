@@ -1,8 +1,10 @@
-const STEPS_PER_CHARGE_LEVEL: u8 = 5;
-const BIOS_MEM_SIZE: usize = 256;
-const DATA_MEM_SIZE: usize = 256;
-const PROG_MEM_SIZE: usize = 256;
-const CALL_STACK_LEN: usize = 16;
+use crate::asm::OpCode;
+
+pub const STEPS_PER_CHARGE_LEVEL: u8 = 5;
+pub const BIOS_MEM_SIZE: usize = 256;
+pub const DATA_MEM_SIZE: usize = 256;
+pub const PROG_MEM_SIZE: usize = 256;
+pub const CALL_STACK_LEN: usize = 16;
 
 #[derive(Clone)]
 pub struct Robot {
@@ -11,13 +13,13 @@ pub struct Robot {
     /// Output register
     ret: u8,
     /// BIOS memory
-    bios: [u8; BIOS_MEM_SIZE],
+    pub bios: [u8; BIOS_MEM_SIZE],
     /// BIOS call stack
     bios_call_stack: [u8; CALL_STACK_LEN],
     /// Current position in the BIOS call stack
     bios_call_stack_pos: u8,
     /// General-use memory
-    memory: [u8; DATA_MEM_SIZE],
+    pub memory: [u8; DATA_MEM_SIZE],
     /// Program memory
     progmem: [u8; PROG_MEM_SIZE],
     /// Program call stack
@@ -41,6 +43,13 @@ pub struct Robot {
     x: usize,
     /// Y position
     y: usize,
+}
+
+impl Robot {
+    fn step(&mut self) -> () {
+        // Read an instruction
+        let next_op = OpCode::read_from(&self.bios[usize::from(self.sp)..]);
+    }
 }
 
 impl Default for Robot {
